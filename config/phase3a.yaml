@@ -1,0 +1,10 @@
+threads: 8
+mode: meta
+output_dir: build/phase3a
+references:
+  vfdb: build/databases/v1/vfdb/reference.faa
+  sarg: build/databases/v1/sarg_plus/reference.faa
+diamond:
+  evalue: 1e-5
+  sensitivity: sensitive
+  max_target_seqs: 25

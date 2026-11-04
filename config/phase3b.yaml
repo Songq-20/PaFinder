@@ -1,0 +1,12 @@
+threads: 8
+neighbor_window: 5000
+output_dir: build/phase3b
+mge_reference: build/databases/v1/mgedb/reference.fna
+phase3a_dir: build/phase3a
+blastn:
+  evalue: 1e-5
+  max_target_seqs: 50
+  task: megablast
+classification:
+  high_coverage: 0.8
+  partial_coverage: 0.2

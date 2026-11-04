@@ -1,0 +1,10 @@
+input_root: ./PaFinderDB
+output_root: ./build/databases/v1
+vfdb:
+  protein: VFDB/VFDB_setA_pro.fas.gz
+  nucleotide: VFDB/VFDB_setA_nt.fas.gz
+  metadata: VFDB/VFs.xls.gz
+sarg:
+  directory: SARG+
+mgedb:
+  directory: MGEdb/mgedb/data

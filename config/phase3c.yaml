@@ -1,0 +1,8 @@
+threads: 8
+reference_metadata: PaFinderDB/pathoMAG_metadata.csv
+reference_genomes: PaFinderDB/pathogen_references
+output_dir: build/databases/v1/pathogen_references
+thresholds:
+  ani: 95
+  af_reference: 50
+  af_query: 50

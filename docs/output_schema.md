@@ -1,0 +1,3 @@
+# PaFinder final output schema
+
+`summary.tsv` has one row per MAG. Counts distinguish raw alignment rows, unique homologous genes, MGE HSPs, unique MGE references, and proximity pairs. `gene_summary.tsv` has one row per predicted ORF and records VF/ARG homology flags and review-oriented evidence flags. `vf_hits.tsv`, `arg_hits.tsv`, and `mge_hits.tsv` preserve all original alignment rows. Proximity tables use 1-based inclusive coordinates and report `OVERLAPPING` or `NEARBY` relations. Homology is not a confirmed biological function; MGE matches are reference alignments, not proof of complete mobile elements or transfer.
