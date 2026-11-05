@@ -44,15 +44,20 @@ def build_skani_command(reference_list,out_prefix,threads=8,exe='skani'): return
 def search_skani_command(db,queries,out,threads=8): return ['skani','search','-d',str(db),'-t',str(threads),'-o',str(out),*map(str,queries)]
 
 def parse_skani(path,manifest,thresholds=None):
- thresholds=thresholds or {'ani':95,'af_reference':50,'af_query':50}; md={r['reference_id']:r for r in csv.DictReader(open(manifest),delimiter='\t')}; rows=[]
+ thresholds=thresholds or {'ani':95,'af_reference':50,'af_query':50}; rows=list(csv.DictReader(open(manifest),delimiter='\t')); byid={r.get('reference_id'):r for r in rows}; byfile={Path(r.get('fasta_filename','')).name:r for r in rows if r.get('fasta_filename')}; byacc={r.get('assembly_accession'):r for r in rows}
+ out=[]
  with open(path) as h:
   for r in csv.DictReader(h,delimiter='\t'):
-   ref=r.get('Ref_file',''); key=Path(ref).stem; m=md.get(key) or next((x for x in md.values() if x.get('fasta_path')==ref),None); d={'query_mag_id':Path(r.get('Query_file','')).stem,'reference_id':m['reference_id'] if m else key,'ANI':r.get('ANI',''),'AF_reference':r.get('Align_fraction_ref',''),'AF_query':r.get('Align_fraction_query',''),'metadata_status':'MAPPED' if m else 'UNMAPPED'}
-   if m:d.update(m)
+   ref=r.get('Ref_file',''); name=Path(ref).name; matches=[]
+   if name in byfile: matches=[byfile[name]]
+   elif name in byid: matches=[byid[name]]
+   elif name in byacc: matches=[byacc[name]]
+   d={'query_mag_id':Path(r.get('Query_file','')).stem,'reference_id':matches[0].get('reference_id',name) if len(matches)==1 else name,'ANI':r.get('ANI',''),'AF_reference':r.get('Align_fraction_ref',''),'AF_query':r.get('Align_fraction_query',''),'metadata_status':'MAPPED' if len(matches)==1 else ('AMBIGUOUS' if len(matches)>1 else 'UNMAPPED'),'raw_reference':ref}
+   if len(matches)==1:d.update(matches[0])
    try:d['match_status']='SPECIES_LEVEL_CANDIDATE' if float(d['ANI'])>=thresholds['ani'] and float(d['AF_reference'])>=thresholds['af_reference'] and float(d['AF_query'])>=thresholds['af_query'] else 'RELATED_REFERENCE_BELOW_THRESHOLD'
-   except ValueError:d['match_status']='AMBIGUOUS_SPECIES_MATCH'
-   rows.append(d)
- return rows
+   except (ValueError,TypeError):d['match_status']='AMBIGUOUS_SPECIES_MATCH'
+   out.append(d)
+ return out
 
 def validate_references(manifest, genomes_dir, outdir=None, threads=8, build_skani=False):
  """Linux-side validation; resolves portable fasta_filename against genomes_dir."""

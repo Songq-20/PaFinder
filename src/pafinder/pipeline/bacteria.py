@@ -18,11 +18,12 @@ def run_pipeline(inp,out,db,threads=8,plot=False,skip=None,dry_run=False,skip_sk
  p3a=yaml.safe_load(open(cfgroot/'phase3a.yaml')) if yaml else {'diamond':{'sensitivity':'sensitive','evalue':'1e-5','max_target_seqs':25}}
  p3b=yaml.safe_load(open(cfgroot/'phase3b.yaml')) if yaml else {'blastn':{'task':'megablast','evalue':'1e-5','max_target_seqs':50},'neighbor_window':5000}
  run_params={'diamond':p3a.get('diamond',{}),'blastn':p3b.get('blastn',{}),'neighbor_window':p3b.get('neighbor_window',5000)}
- seen_ids=set()
- for mag in _files(inp):
+ mags=_files(inp)
+ if not mags: raise ValueError('Input MAG directory contains no FASTA files')
+ ids=[m.stem for m in mags]
+ if len(ids)!=len(set(ids)): raise ValueError(f'Input MAG ID collision: {next(x for x in ids if ids.count(x)>1)}')
+ for mag in mags:
   mid=mag.stem
-  if mid in seen_ids: raise ValueError(f'Input MAG ID collision: {mid}')
-  seen_ids.add(mid)
   magroot=out/'mags'/mid; w=magroot/'work'; a=w/'phase3a'; b=w/'phase3b'; a.mkdir(parents=True,exist_ok=True); b.mkdir(parents=True,exist_ok=True)
   st={'mag_id':mid,'status':'FAILED','error':''}
   try:
@@ -44,6 +45,7 @@ def run_pipeline(inp,out,db,threads=8,plot=False,skip=None,dry_run=False,skip_sk
     ev=magroot/'evidence'; ev.mkdir(parents=True,exist_ok=True);
     with open(ev/'pathogen_matches.tsv','w',newline='') as fh:
      fields=list(matches[0]) if matches else ['query_mag_id','reference_id','ANI','AF_reference','AF_query','metadata_status']; ww=csv.DictWriter(fh,fieldnames=fields,delimiter='\t'); ww.writeheader(); ww.writerows(matches)
+    matches=sorted(matches,key=lambda x:(-float(x.get('ANI') or 0),-min(float(x.get('AF_reference') or 0),float(x.get('AF_query') or 0)),x.get('reference_id','')))
     st['skani_status']='SUCCESS_WITH_HITS' if matches else 'SUCCESS_NO_HITS'; st['pathogen_matches']=matches
    st.update(status='SUCCESS_WITH_HITS')
   except Exception as e: st['error']=str(e)
@@ -54,6 +56,7 @@ def run_pipeline(inp,out,db,threads=8,plot=False,skip=None,dry_run=False,skip_sk
  for st in statuses:
   p=out/'mags'/st['mag_id']/'summary.tsv'
   if p.exists(): allrows.extend(csv.DictReader(open(p),delimiter='\t'))
+  else: allrows.append({'mag_id':st['mag_id'],'predicted_gene_count':st.get('predicted_genes',''),'interpretation_status':st['status'],'skani_status':st.get('skani_status','NOT_RUN' if skip_skani else 'FAILED'),'error':st.get('error','')})
  if allrows:
   fields=list(allrows[0]); sk={x['mag_id']:x.get('pathogen_matches',[]) for x in statuses}
   for row in allrows:
