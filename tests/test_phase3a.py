@@ -41,10 +41,72 @@ def test_empty_hit_table_has_header(tmp_path):
  write_empty_hits(out,md); assert len(out.read_text().splitlines())==1
 
 def test_mge_union_and_proximity(tmp_path):
- from pafinder.annotation.mge import parse_hits, proximity
- raw=tmp_path/'r'; md=tmp_path/'m'; out=tmp_path/'o'; genes=tmp_path/'g'; prox=tmp_path/'p'
- raw.write_text('contig1\tmgedb_nucleotide_000001\t99\t10\t1\t10\t100\t1\t10\t100\t1e-5\t20\ncontig1\tmgedb_nucleotide_000001\t99\t10\t11\t20\t100\t8\t17\t100\t1e-5\t20\n')
- md.write_text('record_id\tElement_name\n mgedb_nucleotide_000001\tX\n'.replace(' ','',1))
- rows,s=parse_hits(raw,md,out,{'partial_coverage':.1},'MAG')
- assert s[0]['merged_subject_covered_bp']=='20' and s[0]['hsp_count']=='2'
- genes.write_text('mag_id\tcontig_id\tgene_id\tstart\tend\nMAG\tcontig1\tg1\t15\t25\n'); fh=tmp_path/'fh'; fh.write_text('qseqid\n'+'g1\n'); assert proximity(genes,fh,out,prox,5)==1
+    import csv
+    from pafinder.annotation.mge import parse_hits, proximity
+
+    raw = tmp_path / "raw.tsv"
+    md = tmp_path / "metadata.tsv"
+    out = tmp_path / "mge_hits.tsv"
+    genes = tmp_path / "genes.tsv"
+    fh = tmp_path / "functional_hits.tsv"
+    prox = tmp_path / "proximity.tsv"
+
+    raw.write_text(
+        "contig1\tmgedb_nucleotide_000001\t99\t10\t"
+        "1\t10\t100\t1\t10\t100\t1e-5\t20\n"
+        "contig1\tmgedb_nucleotide_000001\t99\t10\t"
+        "11\t20\t100\t8\t17\t100\t1e-5\t20\n"
+    )
+
+    md.write_text(
+        "record_id\tElement_name\n"
+        "mgedb_nucleotide_000001\tX\n"
+    )
+
+    rows, summaries = parse_hits(
+        raw, md, out,
+        {"partial_coverage": 0.1},
+        "MAG"
+    )
+
+    # Two raw HSPs, 17 non-redundant reference bases.
+    assert len(rows) == 2
+    assert summaries[0]["merged_subject_covered_bp"] == 17
+    assert summaries[0]["hsp_count"] == 2
+
+    genes.write_text(
+        "mag_id\tcontig_id\tgene_id\tstart\tend\n"
+        "MAG\tcontig1\tg1\t15\t25\n"
+    )
+
+    fh.write_text("qseqid\ng1\n")
+
+    pair_count = proximity(
+        genes, fh, out, prox, window=5
+    )
+
+    with prox.open() as f:
+        records = list(csv.DictReader(f, delimiter="\t"))
+
+    # HSP-level statistics.
+    assert pair_count == 2
+    assert len(records) == 2
+
+    # Only one unique functional gene.
+    assert {r["gene_id"] for r in records} == {"g1"}
+
+    # One overlap and one nearby HSP.
+    observed = {
+        (
+            int(r["mge_query_start"]),
+            int(r["mge_query_end"]),
+            r["relation"],
+            int(r["distance_bp"]),
+        )
+        for r in records
+    }
+
+    assert observed == {
+        (1, 10, "NEARBY", 4),
+        (11, 20, "OVERLAPPING", 0),
+    }

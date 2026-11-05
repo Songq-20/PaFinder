@@ -27,4 +27,10 @@ def run(phase3a,phase3b,out,plot=False):
   if vpr or apr: flags.append('INSPECT_MGE_CONTEXT')
   mags_rows.append({'mag_id':mag,'predicted_gene_count':len(gs),'vf_raw_homolog_genes':len({r['qseqid'] for r in v}),'vf_raw_alignment_rows':len(v),'arg_raw_homolog_genes':len({r['qseqid'] for r in ar}),'arg_raw_alignment_rows':len(ar),'mge_hsp_count':len(mh),'mge_unique_reference_count':len({r['sseqid'] for r in mh}),'vf_mge_pair_count':len(vpr),'arg_mge_pair_count':len(apr),'vf_mge_overlapping':sum(r['relation']=='OVERLAPPING' for r in vpr),'vf_mge_nearby':sum(r['relation']=='NEARBY' for r in vpr),'arg_mge_overlapping':sum(r['relation']=='OVERLAPPING' for r in apr),'arg_mge_nearby':sum(r['relation']=='NEARBY' for r in apr),'evidence_flags':';'.join(flags),'interpretation_status':'SUCCESS_WITH_HITS' if (v or ar or mh) else 'SUCCESS_NO_HITS'})
  write(mags_rows,o/'summary.tsv'); write([{'metric':'mag_count','value':len(mags)},{'metric':'gene_count','value':len(genes)},{'metric':'vf_raw_homolog_genes','value':len(vfgenes)},{'metric':'arg_raw_homolog_genes','value':len(arggenes)},{'metric':'mge_hsp_count','value':len(mge)},{'metric':'vf_mge_pairs','value':len(vp)},{'metric':'arg_mge_pairs','value':len(ap)}],o/'summary_stats.tsv',['metric','value']); write([],o/'evidence/mge_loci.tsv',['mag_id','contig_id','mge_reference_id','mge_query_start','mge_query_end']); write([{'mag_id':m,'status':'SUCCESS_WITH_HITS'} for m in mags],qc/'mag_status.tsv',['mag_id','status']); json.dump({'status':'SUCCESS_WITH_HITS','mag_count':len(mags),'gene_count':len(genes),'vf_alignment_rows':len(vf),'arg_alignment_rows':len(arg),'mge_hsp_count':len(mge)},open(qc/'run_manifest.json','w'),indent=2); json.dump({'phase3a':'existing outputs','phase3b':'existing outputs'},open(qc/'database_versions.json','w'),indent=2)
+ if plot:
+  try:
+   from pafinder.visualization.neighborhood import plot_regions
+   plot_regions(a,b,o/'figures',5000,10,('svg','png'))
+  except ImportError as e:
+   (o/'plot_error.txt').write_text('matplotlib required for plotting: '+str(e))
  return mags_rows

@@ -24,8 +24,8 @@ def predict_orfs(mag_fasta,outdir,mode='meta',threads=8):
    finder=pyrodigal.GeneFinder(meta=(mode=='meta'))
    genes = finder.find_genes(seq.encode())
    for i,g in enumerate(genes,1):
-    gid=f'{mag}__{c}__gene_{i:05d}'; start,end,strand=g.begin+1,g.end,g.strand
-    header=f'{gid} MAG={mag} contig={c} gene={gid}'; prot=str(g.translate()); nuc=seq[g.begin:g.end] if strand==1 else _revcomp(seq[g.begin:g.end])
+    gid=f'{mag}__{c}__gene_{i:05d}'; start,end,strand=g.begin,g.end,g.strand
+    header=f'{gid} MAG={mag} contig={c} gene={gid}'; prot=str(g.translate()); nuc=seq[g.begin-1:g.end] if strand==1 else _revcomp(seq[g.begin-1:g.end])
     ap.write(f'>{header}\n{prot}\n'); an.write(f'>{header}\n{nuc}\n')
     attrs=f'ID={gid};MAG={mag};contig={c};gene_id={gid}'
     ag.write(f'{c}\tpyrodigal\tCDS\t{start}\t{end}\t.\t{"+" if strand==1 else "-"}\t0\t{attrs}\n')
